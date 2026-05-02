@@ -6,14 +6,14 @@ import { SYSTEM_PROMPT } from '@/lib/prompt';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as { emotion?: string; apiKey?: string };
+    const body = await req.json() as { emotion?: string };
     const emotion = body.emotion?.trim();
 
     if (!emotion) {
       return NextResponse.json({ error: '감정을 입력해주세요.' }, { status: 400 });
     }
 
-    const key = body.apiKey?.trim() || process.env.ANTHROPIC_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) {
       return NextResponse.json({ error: 'API 키가 필요합니다.' }, { status: 400 });
     }

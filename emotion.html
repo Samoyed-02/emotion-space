@@ -224,11 +224,6 @@
   <p class="subtitle">당신의 감정을 우주로 표현합니다</p>
 
   <div class="field">
-    <label>Anthropic API Key</label>
-    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." />
-  </div>
-
-  <div class="field">
     <label>지금 어떤 감정인가요?</label>
     <input type="text" id="emotion" placeholder="예: 행복해, 슬프다, 설레, 화가 나..." />
     <div class="presets">
@@ -493,71 +488,20 @@ loop();
 // ═══════════════════════════════════════════════════════════
 //  Anthropic API 호출
 // ═══════════════════════════════════════════════════════════
-async function callAPI(emotion, apiKey) {
-  const prompt = `당신은 감정을 우주 시각화 파라미터로 변환하는 전문가입니다.
-
-사용자 감정: "${emotion}"
-
-이 감정에 완벽하게 어울리는 우주 애니메이션 파라미터를 JSON으로만 반환하세요.
-코드블록(\`\`\`) 없이 순수 JSON 객체만 반환하세요.
-
-{
-  "theme": "감정 테마 이름(한국어)",
-  "description": "이 우주에 대한 시적이고 감성적인 설명(한국어, 1~2문장)",
-  "backgroundColor": "#rrggbb (어두운 배경색)",
-  "primaryColor":    "#rrggbb (별 주색상)",
-  "secondaryColor":  "#rrggbb (성운 보조색)",
-  "accentColor":     "#rrggbb (별똥별·강조, 밝고 선명하게)",
-  "starCount":       100~500 사이 정수,
-  "starBrightness":  0.3~1.0,
-  "starTwinkleSpeed":0.3~2.0,
-  "nebulaCount":     2~7 사이 정수,
-  "nebulaOpacity":   0.1~0.65,
-  "nebulaSize":      80~360,
-  "shootingStarFrequency": 0.001~0.025,
-  "shootingStarSpeed":     2~14,
-  "shootingStarTrail":     10~55 정수,
-  "animationSpeed":  0.3~2.2,
-  "particleSize":    0.7~3.0
-}
-
-감정별 가이드:
-• 행복·기쁨 → 황금·노랑, starCount↑, shootingStarFrequency↑, animationSpeed↑
-• 슬픔·우울 → 짙은 파랑·남색, starBrightness↓, shootingStarFrequency↓, animationSpeed↓
-• 분노·화   → 빨강·주황, shootingStarSpeed↑, shootingStarFrequency↑, 강렬
-• 설렘·사랑 → 핑크·라벤더, 반짝임↑, starCount↑, shootingStarFrequency 중간↑
-• 평온·안정 → 청록·민트, animationSpeed↓, 부드러움, nebulaOpacity↑
-• 불안·공포 → 보라·검정, starBrightness 낮고 불규칙, animationSpeed 빠름
-• 외로움    → 짙은 남색, starCount↓, shootingStarFrequency↓, 고요
-• 희망      → 연보라·하늘, starCount↑, accentColor 밝음
-• 공허      → 매우 어두운 회색·검정, starCount↓, nebulaOpacity 매우 낮음`;
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+async function callAPI(emotion) {
+  const res = await fetch('/api/generate-universe', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }]
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emotion })
   });
 
   if (!res.ok) {
     let msg = `API 오류 (${res.status})`;
-    try { msg = (await res.json()).error?.message || msg; } catch(_) {}
+    try { msg = (await res.json()).error || msg; } catch(_) {}
     throw new Error(msg);
   }
 
-  const data  = await res.json();
-  const text  = data.content[0].text.trim();
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('응답 파싱 실패 — JSON을 찾을 수 없습니다.');
-  return JSON.parse(match[0]);
+  return await res.json();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -599,9 +543,7 @@ document.getElementById('emotion').addEventListener('keydown', e => {
 
 async function generate() {
   const emotion = document.getElementById('emotion').value.trim();
-  const apiKey  = document.getElementById('apiKey').value.trim();
 
-  if (!apiKey)  { showErr('API 키를 입력해주세요.'); return; }
   if (!emotion) { showErr('감정을 입력해주세요.'); return; }
 
   hideErr();
@@ -609,7 +551,7 @@ async function generate() {
   genBtn.innerHTML = '<span class="spinner"></span>우주를 생성하는 중...';
 
   try {
-    const params = await callAPI(emotion, apiKey);
+    const params = await callAPI(emotion);
 
     // 페이드 전환
     overlay.classList.add('fade');
