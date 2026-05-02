@@ -36,7 +36,7 @@ export default function UniverseCanvas({ params, transitioning }: Props) {
     function loop() {
       animRef.current = requestAnimationFrame(loop);
       const scene = sceneRef.current;
-      if (!scene || !canvas) return;
+      if (!scene || !canvas || !ctx) return;
       const W = canvas.width;
       const H = canvas.height;
       const { params: p, stars, nebulae, shootingStars } = scene;
