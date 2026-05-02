@@ -1,6 +1,5 @@
 export const runtime = 'edge';
 
-import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 import { SYSTEM_PROMPT } from '@/lib/prompt';
 
@@ -18,23 +17,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'API 키가 필요합니다.' }, { status: 400 });
     }
 
-    const client = new Anthropic({ apiKey: key });
-
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          // 시스템 프롬프트를 캐싱해 반복 호출 비용 절감
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [{ role: 'user', content: `사용자 감정: "${emotion}"` }],
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: `사용자 감정: "${emotion}"` }],
+      }),
     });
 
-    const text = (message.content[0] as Anthropic.TextBlock).text.trim();
+    const data = await res.json();
+    const text = data.content[0].text.trim();
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
       return NextResponse.json({ error: '응답 파싱 실패' }, { status: 500 });
