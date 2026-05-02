@@ -1,21 +1,23 @@
 export const runtime = 'edge';
 
-import { NextResponse } from 'next/server';
 import { SYSTEM_PROMPT } from '@/lib/prompt';
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json() as { emotion?: string };
     const emotion = body.emotion?.trim();
 
-    if (!emotion) {
-      return NextResponse.json({ error: '감정을 입력해주세요.' }, { status: 400 });
-    }
+    if (!emotion) return json({ error: '감정을 입력해주세요.' }, 400);
 
     const key = process.env.ANTHROPIC_API_KEY;
-    if (!key) {
-      return NextResponse.json({ error: 'API 키가 필요합니다.' }, { status: 400 });
-    }
+    if (!key) return json({ error: 'API 키가 없습니다.' }, 400);
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -33,15 +35,15 @@ export async function POST(req: Request) {
     });
 
     const data = await res.json();
+    if (!res.ok) return json({ error: data.error?.message || '알 수 없는 오류' }, 500);
+
     const text = data.content[0].text.trim();
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) {
-      return NextResponse.json({ error: '응답 파싱 실패' }, { status: 500 });
-    }
+    if (!match) return json({ error: '응답 파싱 실패' }, 500);
 
-    return NextResponse.json(JSON.parse(match[0]));
+    return json(JSON.parse(match[0]));
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '알 수 없는 오류';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const msg = e instanceof Error ? e.message : JSON.stringify(e);
+    return json({ error: msg }, 500);
   }
 }
